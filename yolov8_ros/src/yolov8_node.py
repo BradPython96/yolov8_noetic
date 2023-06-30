@@ -40,6 +40,8 @@ class Yolo_ros():
         tracker = TRACKER_MAP[cfg.tracker_type](args=cfg, frame_rate=1)
         return tracker
       
+
+
     def image_cb(self,msg):
 
         cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
@@ -63,145 +65,155 @@ class Yolo_ros():
 
             box = Box()
             box.ID = int(box_data.id)
+            box.box_class = box.cls
             box.xyxy = box_data.xyxy[0]
             boxes.boxes.append(box)
-        
-        for box in boxes.boxes:
-            x_min = min(box.xyxy[0], box.xyxy[2])
-            y_min = min(box.xyxy[1], box.xyxy[3])
-            x_max = max(box.xyxy[0], box.xyxy[2])
-            y_max = max(box.xyxy[1], box.xyxy[3])
             
-            for p in results.keypoints.data :
-                is_in_box = True
-                point_list = []
-                for i in p:
-                    point = Point()
-                    point.x = i[0]
-                    point.y = i[1]
-                    point.z = i[2]
-                    point_list.append(point)
-                    if (point.x< x_min or point.x > x_max or point.y< y_min or point.y > y_max):
-                        is_in_box = False
-                        break
-                if is_in_box:
-                    box.skeleton=point_list
-                    break
+        if results.keypoints != None:
 
-        rospy.loginfo("Continuous model publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))                            
+            for box in boxes.boxes:
+                x_min = min(box.xyxy[0], box.xyxy[2])
+                y_min = min(box.xyxy[1], box.xyxy[3])
+                x_max = max(box.xyxy[0], box.xyxy[2])
+                y_max = max(box.xyxy[1], box.xyxy[3])
+
+                for p in results.keypoints.data :
+                    is_in_box = True
+                    point_list = []
+                    for i in p:
+                        point = Point()
+                        point.x = i[0]
+                        point.y = i[1]
+                        point.z = i[2]
+                        point_list.append(point)
+                        if (point.x< x_min or point.x > x_max or point.y< y_min or point.y > y_max):
+                            is_in_box = False
+                            break
+                    if is_in_box:
+                        box.skeleton=point_list
+                        break
+
+        rospy.loginfo("Publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))                            
         self.result_pub.publish(boxes)
 
-    def image_cb_1(self,msg):
+    # def image_cb_1(self,msg):
 
-        cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
+    #     cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
 
-        results = self.yolo_1.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
-        results: Results = results[0].cpu()
+    #     results = self.yolo_1.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+    #     results: Results = results[0].cpu()
 
-        # tracking
-        det = results.boxes.numpy()
+    #     # tracking
+    #     det = results.boxes.numpy()
 
-        if len(det) > 0:
-            im0s = self.yolo_1.predictor.batch[2]
-            im0s = im0s if isinstance(im0s, list) else [im0s]
-            tracks = self.tracker.update(det, im0s[0])
-            if len(tracks) > 0:
-                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+    #     if len(det) > 0:
+    #         im0s = self.yolo_1.predictor.batch[2]
+    #         im0s = im0s if isinstance(im0s, list) else [im0s]
+    #         tracks = self.tracker.update(det, im0s[0])
+    #         if len(tracks) > 0:
+    #             results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-        boxes = Boxes()
+    #     boxes = Boxes()
 
-        for box_data in results.boxes:
+    #     for box_data in results.boxes:
 
-            box = Box()
-            box.ID = int(box_data.id)
-            box.xyxy = box_data.xyxy[0]
-            boxes.boxes.append(box)
-        rospy.loginfo("Model 1 publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))
-        self.result_pub_1.publish(boxes)
+    #         box = Box()
+    #         box.ID = int(box_data.id)
+    #         box.xyxy = box_data.xyxy[0]
+    #         boxes.boxes.append(box)
+    #     rospy.loginfo("Model 1 publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))
+    #     self.result_pub_1.publish(boxes)
 
 
-    def image_cb_2(self,msg):
+    # def image_cb_2(self,msg):
 
-        cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
+    #     cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
 
-        results = self.yolo_2.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
-        results: Results = results[0].cpu()
+    #     results = self.yolo_2.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+    #     results: Results = results[0].cpu()
 
-        # tracking
-        det = results.boxes.numpy()
+    #     # tracking
+    #     det = results.boxes.numpy()
 
-        if len(det) > 0:
-            im0s = self.yolo_2.predictor.batch[2]
-            im0s = im0s if isinstance(im0s, list) else [im0s]
-            tracks = self.tracker.update(det, im0s[0])
-            if len(tracks) > 0:
-                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+    #     if len(det) > 0:
+    #         im0s = self.yolo_2.predictor.batch[2]
+    #         im0s = im0s if isinstance(im0s, list) else [im0s]
+    #         tracks = self.tracker.update(det, im0s[0])
+    #         if len(tracks) > 0:
+    #             results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-        boxes = Boxes()
+    #     boxes = Boxes()
 
-        for box_data in results.boxes:
+    #     for box_data in results.boxes:
 
-            box = Box()
-            box.ID = int(box_data.id)
-            box.xyxy = box_data.xyxy[0]
-            boxes.boxes.append(box)
-        rospy.loginfo("Model 2 publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))
-        self.result_pub_2.publish(boxes)
+    #         box = Box()
+    #         box.ID = int(box_data.id)
+    #         box.xyxy = box_data.xyxy[0]
+    #         boxes.boxes.append(box)
+    #     rospy.loginfo("Model 2 publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))
+    #     self.result_pub_2.publish(boxes)
 
             
     def yolov8_on_unique_frame_cb(self, req):
 
         cv_image = self.cv_bridge.imgmsg_to_cv2(req.image)
 
-        results = self.yolo.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+        if req.model_name=="yolov8m-pose.pt":
+            yolo = self.yolo_pose
+        elif req.model_name=="yolov8m-seg.pt":
+            yolo = self.yolo_seg
+        elif req.model_name=="yolov8m.pt":
+            yolo = self.yolo_basic
+
+        if len(req.classes>0):
+            results = yolo.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=req.classes)
+        else :
+            results = yolo.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+
         results: Results = results[0].cpu()
 
         # tracking
         det = results.boxes.numpy()
 
         if len(det) > 0:
-            im0s = self.yolo.predictor.batch[2]
+            im0s = yolo.predictor.batch[2]
             im0s = im0s if isinstance(im0s, list) else [im0s]
             tracks = self.tracker.update(det, im0s[0])
             if len(tracks) > 0:
                 results.update(boxes=torch.as_tensor(tracks[:, :-1]))
-        
-        boxes = Boxes()
-        
-        # rospy.loginfo("keypoints : " + str(results.keypoints))
-        
+        boxes = Boxes()        
 
         for box_data in results.boxes:
 
-            # rospy.loginfo("boxe ID = " + str(int(box_data.id)))
-            rospy.loginfo("boxe bound = " + str(box_data.xyxy))
             box = Box()
             box.ID = int(box_data.id)
+            box.box_class = box.cls
             box.xyxy = box_data.xyxy[0]
             boxes.boxes.append(box)
         
-        for box in boxes.boxes:
-            x_min = min(box.xyxy[0], box.xyxy[2])
-            y_min = min(box.xyxy[1], box.xyxy[3])
-            x_max = max(box.xyxy[0], box.xyxy[2])
-            y_max = max(box.xyxy[1], box.xyxy[3])
-            
-            for p in results.keypoints.data :
-                is_in_box = True
-                point_list = []
-                for i in p:
-                    point = Point()
-                    point.x = i[0]
-                    point.y = i[1]
-                    point.z = i[2]
-                    point_list.append(point)
-                    if ((point.x< x_min or point.x > x_max or point.y< y_min or point.y > y_max) and point.z >= 0.5):
-                        is_in_box = False
+        if results.keypoints != None:
+            for box in boxes.boxes:
+                x_min = min(box.xyxy[0], box.xyxy[2])
+                y_min = min(box.xyxy[1], box.xyxy[3])
+                x_max = max(box.xyxy[0], box.xyxy[2])
+                y_max = max(box.xyxy[1], box.xyxy[3])
+                
+                for p in results.keypoints.data :
+                    is_in_box = True
+                    point_list = []
+                    for i in p:
+                        point = Point()
+                        point.x = i[0]
+                        point.y = i[1]
+                        point.z = i[2]
+                        point_list.append(point)
+                        if ((point.x< x_min or point.x > x_max or point.y< y_min or point.y > y_max) and point.z >= 0.5):
+                            is_in_box = False
+                            break
+                    if is_in_box:
+                        box.skeleton=point_list
                         break
-                if is_in_box:
-                    box.skeleton=point_list
-                    break
-        
+     
         return boxes
 
 
@@ -214,7 +226,7 @@ class Yolo_ros():
 
         # params
         rospy.set_param("model", "yolov8m-pose.pt")
-        self.model_continuous_treatment = rospy.get_param("model")
+        model_continuous_treatment = rospy.get_param("model")
         
         rospy.set_param("tracker", "bytetrack.yaml")
         tracker = rospy.get_param("tracker")
@@ -231,12 +243,24 @@ class Yolo_ros():
         self.tracker = self.create_tracker(tracker)
             
         rospy.loginfo("Creatings models\n")
-        self.yolo_continuous_treatment = YOLO(self.model_continuous_treatment)
+
+        # self.yolo_continuous_treatment = YOLO(self.model_continuous_treatment)
+
+        self.yolo_pose = YOLO("yolov8m-pose.pt")
         rospy.loginfo("First model created")
-        self.yolo_1 = YOLO("yolov8m-seg.pt")
+        self.yolo_seg = YOLO("yolov8m-seg.pt")
         rospy.loginfo("Second model created")
-        self.yolo_2 = YOLO("yolov8m.pt")
+        self.yolo_basic = YOLO("yolov8m.pt")
         rospy.loginfo("Third model created")
+
+
+        if model_continuous_treatment=="yolov8m-pose.pt":
+            self.yolo_continuous_treatment = self.yolo_pose
+        elif model_continuous_treatment=="yolov8m-seg.pt":
+            self.yolo_continuous_treatment = self.yolo_seg
+        elif model_continuous_treatment=="yolov8m.pt":
+            self.yolo_continuous_treatment = self.yolo_basic
+
         self.cv_bridge=CvBridge()
 
         # topcis
@@ -245,11 +269,11 @@ class Yolo_ros():
         video_sub = rospy.Subscriber("/usb_cam/image_raw", Image, self.image_cb)
         self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
         
-        video_sub_1 = rospy.Subscriber("/usb_cam/image_raw", Image, self.image_cb_1)
-        self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
+        # video_sub_1 = rospy.Subscriber("/usb_cam/image_raw", Image, self.image_cb_1)
+        # self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
         
-        video_sub_2 = rospy.Subscriber("/usb_cam/image_raw", Image, self.image_cb_2)
-        self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
+        # video_sub_2 = rospy.Subscriber("/usb_cam/image_raw", Image, self.image_cb_2)
+        # self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
 
         #service 
         self.yolov8_srv = rospy.Service('yolov8_on_unique_frame', Yolov8, self.yolov8_on_unique_frame_cb)
