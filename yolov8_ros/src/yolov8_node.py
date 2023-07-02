@@ -58,24 +58,28 @@ class Yolo_ros():
             tracks = self.tracker.update(det, im0s[0])
             if len(tracks) > 0:
                 results.update(boxes=torch.as_tensor(tracks[:, :-1]))
-        
         boxes = Boxes()
             
         for box_data in results.boxes:
 
             box = Box()
             box.ID = int(box_data.id)
-            box.box_class = box.cls
-            box.xyxy = box_data.xyxy[0]
+            box.bbox_class = results.names[box_data.cls]
+            box.probability = box_data.conf
+            box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
+            box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
+            box.xmax = max(box_data.xyxy[0][0], box_data.xyxy[0][2])
+            box.ymax = max(box_data.xyxy[0][1], box_data.xyxy[0][3])
+
             boxes.boxes.append(box)
             
         if results.keypoints != None:
 
             for box in boxes.boxes:
-                x_min = min(box.xyxy[0], box.xyxy[2])
-                y_min = min(box.xyxy[1], box.xyxy[3])
-                x_max = max(box.xyxy[0], box.xyxy[2])
-                y_max = max(box.xyxy[1], box.xyxy[3])
+                x_min = box.xmin
+                y_min = box.ymin
+                x_max = box.xmax
+                y_max = box.ymax
 
                 for p in results.keypoints.data :
                     is_in_box = True
@@ -187,16 +191,21 @@ class Yolo_ros():
 
             box = Box()
             box.ID = int(box_data.id)
-            box.box_class = box.cls
-            box.xyxy = box_data.xyxy[0]
+            box.bbox_class = results.names[box_data.cls]
+            box.probability = box_data.conf
+            box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
+            box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
+            box.xmax = max(box_data.xyxy[0][0], box_data.xyxy[0][2])
+            box.ymax = max(box_data.xyxy[0][1], box_data.xyxy[0][3])
+
             boxes.boxes.append(box)
         
         if results.keypoints != None:
             for box in boxes.boxes:
-                x_min = min(box.xyxy[0], box.xyxy[2])
-                y_min = min(box.xyxy[1], box.xyxy[3])
-                x_max = max(box.xyxy[0], box.xyxy[2])
-                y_max = max(box.xyxy[1], box.xyxy[3])
+                x_min = box.xmin
+                y_min = box.ymin
+                x_max = box.xmax
+                y_max = box.ymax
                 
                 for p in results.keypoints.data :
                     is_in_box = True

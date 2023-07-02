@@ -1,4 +1,8 @@
 uint8 ID
-uint8 box_class
-float32[] xyxy
+string bbox_class
+float64 probability
+int64 xmin
+int64 ymin
+int64 xmax
+int64 ymax
 geometry_msgs/Point[] skeleton
