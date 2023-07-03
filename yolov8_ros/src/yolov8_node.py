@@ -17,7 +17,7 @@ from geometry_msgs.msg import Point
 from sensor_msgs.msg import Image
 
 from yolov8_ros.msg import Box, Boxes, SkeletonPoint
-from yolov8_ros.srv import Yolov8
+from yolov8_ros.srv import Yolov8, Yolov8Response
 #from vision_msgs.msg import Detection2D
 #from vision_msgs.msg import ObjectHypothesisWithPose
 #from vision_msgs.msg import Detection2DArray
@@ -197,17 +197,18 @@ class Yolo_ros():
 
         cv_image = self.cv_bridge.imgmsg_to_cv2(req.image)
 
-        if req.model_name=="yolov8m-pose.pt":
-            yolo = self.yolo_pose
-        elif req.model_name=="yolov8m-seg.pt":
-            yolo = self.yolo_seg
-        elif req.model_name=="yolov8m.pt":
-            yolo = self.yolo_basic
+        # if req.model_name=="yolov8m-pose.pt":
+        #     yolo = self.yolo_pose
+        # elif req.model_name=="yolov8m-seg.pt":
+        #     yolo = self.yolo_seg
+        # elif req.model_name=="yolov8m.pt":
+        #     yolo = self.yolo_basic
 
-        if len(req.classes>0):
-            results = yolo.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=req.classes)
+
+        if len(req.classes)>0:
+            results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=req.classes)
         else :
-            results = yolo.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+            results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
 
         results: Results = results[0].cpu()
 
@@ -215,19 +216,19 @@ class Yolo_ros():
         det = results.boxes.numpy()
 
         if len(det) > 0:
-            im0s = yolo.predictor.batch[2]
+            im0s = self.yolo_seg.predictor.batch[2]
             im0s = im0s if isinstance(im0s, list) else [im0s]
             tracks = self.tracker.update(det, im0s[0])
             if len(tracks) > 0:
                 results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-        boxes = Boxes()        
+        boxes = Boxes()
         for box_data in results.boxes:
 
             box = Box()
             if box.ID!=None:
                 box.ID = int(box_data.id)
-            box.bbox_class = results.names[box_data.cls]
+            box.bbox_class = results.names[int(box_data.cls)]
             box.probability = float(box_data.conf)
             box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
             box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
@@ -258,8 +259,9 @@ class Yolo_ros():
                     if is_in_box:
                         box.skeleton=skeleton
                         break
-        rospy.loginfo("Response sent, number of boxes foud : " + str(len(results.boxes)))
-        return boxes
+        rospy.loginfo(boxes.boxes)
+        # rospy.loginfo("Response sent ")
+        return Yolov8Response(boxes.boxes)
 
 
     def yolov8_node(self):
@@ -310,11 +312,11 @@ class Yolo_ros():
         # topcis
         # _pub = rospy.Publisher("detections",Detection2DArray, queue_size=10)
         # _dbg_pub = rospy.Publisher("dbg_image",Image,  10)
-        video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
-        self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
+        # video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
+        # self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
         
-        video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
-        self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
+        # video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
+        # self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
         
         # video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
         # self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
