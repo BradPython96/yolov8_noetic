@@ -54,6 +54,7 @@ add_message_files(
   FILES
   Box.msg
   Boxes.msg
+  SkeletonPoint.msg
 )
 
 ## Generate services in the 'srv' folder
