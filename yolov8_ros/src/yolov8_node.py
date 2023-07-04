@@ -155,18 +155,19 @@ class Yolo_ros():
                     y_min = box.ymin
                     x_max = box.xmax
                     y_max = box.ymax
-
                     for p in results.masks.xy :
                         is_in_box = True
-                        seg = Point()
+                        points_list = []
                         for i in p:
+                            seg = Point()
                             seg.x = i[0]
                             seg.y = i[1]
+                            points_list.append(seg)
                             if (seg.x< x_min or seg.x > x_max or seg.y< y_min or seg.y > y_max):
                                 is_in_box = False
                                 break
                         if is_in_box:
-                            box.points_in_seg.append(seg)
+                            box.points_in_seg = points_list
                             break
 
 
@@ -200,7 +201,7 @@ class Yolo_ros():
             for box_data in results.boxes:
 
                 box = Box()
-                if box.ID!=None:
+                if box_data.id!=None:
                     box.ID = int(box_data.id)
                 box.bbox_class = results.names[int(box_data.cls)]
                 box.probability = float(box_data.conf)
@@ -227,18 +228,25 @@ class Yolo_ros():
         
         cv_image = self.cv_bridge.imgmsg_to_cv2(image)
 
-        # if req.model_name=="yolov8m-pose.pt":
-        #     yolo = self.yolo_pose
-        # elif req.model_name=="yolov8m-seg.pt":
-        #     yolo = self.yolo_seg
-        # elif req.model_name=="yolov8m.pt":
-        #     yolo = self.yolo_basic
 
+        cls = []
+        for cl in req.classes:
+            cls.append(int(cl))
 
-        if len(req.classes)>0:
-            results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=req.classes)
+        if len(cls)>0:
+            rospy.loginfo("classes :" + str(cls))
         else :
-            results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+            rospy.loginfo("All classes")
+            cls=[i for i in range(80)]
+                
+        if req.model_name=="yolov8m-pose.pt":
+            results = self.yolo_pose.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")    
+
+        else :
+            results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
+
+        # else:
+        #     results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
         results: Results = results[0].cpu()
 
@@ -246,17 +254,24 @@ class Yolo_ros():
         det = results.boxes.numpy()
 
         if len(det) > 0:
-            im0s = self.yolo_seg.predictor.batch[2]
+            if req.model_name=="yolov8m-pose.pt":
+                im0s = self.yolo_pose.predictor.batch[2]
+            elif req.model_name=="yolov8m-seg.pt":
+                im0s = self.yolo_seg.predictor.batch[2]
+            else :
+                im0s = self.yolo_basic.predictor.batch[2]
+            
             im0s = im0s if isinstance(im0s, list) else [im0s]
             tracks = self.tracker.update(det, im0s[0])
             if len(tracks) > 0:
                 results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
         boxes = Boxes()
+
         for box_data in results.boxes:
 
             box = Box()
-            if box.ID!=None:
+            if box_data.id!=None:
                 box.ID = int(box_data.id)
             box.bbox_class = results.names[int(box_data.cls)]
             box.probability = float(box_data.conf)
@@ -299,15 +314,17 @@ class Yolo_ros():
                 y_max = box.ymax
                 for p in results.masks.xy :
                     is_in_box = True
-                    seg = Point()
+                    points_list = []
                     for i in p:
+                        seg = Point()
                         seg.x = i[0]
                         seg.y = i[1]
+                        points_list.append(seg)
                         if (seg.x< x_min or seg.x > x_max or seg.y< y_min or seg.y > y_max):
                             is_in_box = False
                             break
                     if is_in_box:
-                        box.points_in_seg.append(seg)
+                        box.points_in_seg = points_list
                         break
         # rospy.loginfo("Response sent : " + str(boxes))
         return Yolov8Response(boxes.boxes)
@@ -318,7 +335,7 @@ class Yolo_ros():
         rospy.init_node('yolov8')
 
         # params
-        rospy.set_param("model", "yolov8m.pt")
+        rospy.set_param("model", "yolov8m-pose.pt")
         model_continuous_treatment = rospy.get_param("model")
         
         rospy.set_param("tracker", "bytetrack.yaml")
@@ -366,11 +383,11 @@ class Yolo_ros():
         video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
         self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
         
-        # video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
-        # self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
+        video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
+        self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
         
-        # video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
-        # self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
+        video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
+        self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
 
         #service 
         self.yolov8_srv = rospy.Service('yolov8_on_unique_frame', Yolov8, self.yolov8_on_unique_frame_cb)
