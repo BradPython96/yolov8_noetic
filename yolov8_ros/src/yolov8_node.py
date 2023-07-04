@@ -70,10 +70,10 @@ class Yolo_ros():
                     box.ID = int(box_data.id)
                 box.bbox_class = results.names[int(box_data.cls)]
                 box.probability = float(box_data.conf)
-                box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
-                box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
-                box.xmax = max(box_data.xyxy[0][0], box_data.xyxy[0][2])
-                box.ymax = max(box_data.xyxy[0][1], box_data.xyxy[0][3])
+                box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
                 boxes.boxes.append(box)
 
@@ -139,12 +139,33 @@ class Yolo_ros():
                     box.ID = int(box_data.id)
                 box.bbox_class = results.names[int(box_data.cls)]
                 box.probability = float(box_data.conf)
-                box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
-                box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
-                box.xmax = max(box_data.xyxy[0][0], box_data.xyxy[0][2])
-                box.ymax = max(box_data.xyxy[0][1], box_data.xyxy[0][3])
+                box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
                 boxes.boxes.append(box)
+
+            if results.masks != None:
+
+                for box in boxes.boxes:
+                    x_min = box.xmin
+                    y_min = box.ymin
+                    x_max = box.xmax
+                    y_max = box.ymax
+
+                    for p in results.masks.xy :
+                        is_in_box = True
+                        for i in p:
+                            x = i[0]
+                            y = i[1]
+                            if (x< x_min or x > x_max or y< y_min or y > y_max):
+                                is_in_box = False
+                                break
+                        if is_in_box:
+                            box.seg = p
+                            break
+
 
             
             # rospy.loginfo(results.masks.xy)
@@ -154,39 +175,40 @@ class Yolo_ros():
 
 
 
-    # def image_cb_2(self,msg):
+    def image_cb_2(self,msg):
 
-    #     cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
+        cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
 
-    #     results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
-    #     results: Results = results[0].cpu()
+        results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+        results: Results = results[0].cpu()
 
-    #     # tracking
-    #     det = results.boxes.numpy()
+        # tracking
+        det = results.boxes.numpy()
 
-    #     if len(det) > 0:
-    #         im0s = self.yolo_basic.predictor.batch[2]
-    #         im0s = im0s if isinstance(im0s, list) else [im0s]
-    #         tracks = self.tracker.update(det, im0s[0])
-    #         if len(tracks) > 0:
-    #             results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+        if len(det) > 0:
+            im0s = self.yolo_basic.predictor.batch[2]
+            im0s = im0s if isinstance(im0s, list) else [im0s]
+            tracks = self.tracker.update(det, im0s[0])
+            if len(tracks) > 0:
+                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-    #     if len(results.boxes)>0:
-    #         boxes = Boxes()
-    #         for box_data in results.boxes:
+        if len(results.boxes)>0:
+            boxes = Boxes()
+            for box_data in results.boxes:
 
-    #             box = Box()
-    #             if box.ID!=None:
-    #                 box.ID = int(box_data.id)
-    #             box.bbox_class = results.names[int(box_data.cls)]
-    #             box.probability = float(box_data.conf)
-    #             box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
-    #             box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
-    #             box.xmax = max(box_data.xyxy[0][0], box_data.xyxy[0][2])
-    #             box.ymax = max(box_data.xyxy[0][1], box_data.xyxy[0][3])
+                box = Box()
+                if box.ID!=None:
+                    box.ID = int(box_data.id)
+                box.bbox_class = results.names[int(box_data.cls)]
+                box.probability = float(box_data.conf)
+                box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
-    #             boxes.boxes.append(box)
-    #         self.result_pub_2.publish(boxes)
+                boxes.boxes.append(box)
+            
+            self.result_pub_2.publish(boxes)
 
             
     def yolov8_on_unique_frame_cb(self, req):
@@ -230,10 +252,10 @@ class Yolo_ros():
                 box.ID = int(box_data.id)
             box.bbox_class = results.names[int(box_data.cls)]
             box.probability = float(box_data.conf)
-            box.xmin = min(box_data.xyxy[0][0], box_data.xyxy[0][2])
-            box.ymin = min(box_data.xyxy[0][1], box_data.xyxy[0][3])
-            box.xmax = max(box_data.xyxy[0][0], box_data.xyxy[0][2])
-            box.ymax = max(box_data.xyxy[0][1], box_data.xyxy[0][3])
+            box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+            box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+            box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+            box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
             boxes.boxes.append(box)
         
@@ -259,8 +281,25 @@ class Yolo_ros():
                     if is_in_box:
                         box.skeleton=skeleton
                         break
-        rospy.loginfo(boxes.boxes)
-        # rospy.loginfo("Response sent ")
+
+        if results.masks != None:
+            for box in boxes.boxes:
+                x_min = box.xmin
+                y_min = box.ymin
+                x_max = box.xmax
+                y_max = box.ymax
+                for p in results.masks.xy :
+                    is_in_box = True
+                    for i in p:
+                        x = i[0]
+                        y = i[1]
+                        if (x< x_min or x > x_max or y< y_min or y > y_max):
+                            is_in_box = False
+                            break
+                    if is_in_box:
+                        box.seg = p
+                        break
+        # rospy.loginfo("Response sent : " + str(boxes))
         return Yolov8Response(boxes.boxes)
 
 
@@ -312,14 +351,14 @@ class Yolo_ros():
         # topcis
         # _pub = rospy.Publisher("detections",Detection2DArray, queue_size=10)
         # _dbg_pub = rospy.Publisher("dbg_image",Image,  10)
-        # video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
-        # self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
+        video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
+        self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
         
-        # video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
-        # self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
+        video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
+        self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
         
-        # video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
-        # self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
+        video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
+        self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
 
         #service 
         self.yolov8_srv = rospy.Service('yolov8_on_unique_frame', Yolov8, self.yolov8_on_unique_frame_cb)
