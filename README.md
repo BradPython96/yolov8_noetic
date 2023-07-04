@@ -39,7 +39,8 @@
 
 ## **Get results via topics :**
 
-  **Topics to listen to :**
+  _Topics to listen to :_
+  
     - yolov8_result # correspond to model yolov8m-pose.pt
     - yolov8_result_1 # correspond to model yolov8m-seg.pt
     - yolov8_result_2 # correspond to model yolov8m.pt
