@@ -1,0 +1,5 @@
+string model_name
+uint8[] classes #if empty, all classes are tracked
+sensor_msgs/Image image
+---
+Box[] boxes

@@ -224,7 +224,6 @@ class Yolo_ros():
             image = self.last_image
         else :
             image = req.image
-        
         cv_image = self.cv_bridge.imgmsg_to_cv2(image)
 
         # if req.model_name=="yolov8m-pose.pt":
