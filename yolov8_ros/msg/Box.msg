@@ -6,4 +6,4 @@ float64 ymin
 float64 xmax
 float64 ymax
 SkeletonPoint[] skeleton
-int32[][] seg
+int32[] seg
