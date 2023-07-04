@@ -200,7 +200,7 @@ class Yolo_ros():
             for box_data in results.boxes:
 
                 box = Box()
-                if box.ID!=None:
+                if box_data.id!=None:
                     box.ID = int(box_data.id)
                 box.bbox_class = results.names[int(box_data.cls)]
                 box.probability = float(box_data.conf)
@@ -256,7 +256,7 @@ class Yolo_ros():
         for box_data in results.boxes:
 
             box = Box()
-            if box.ID!=None:
+            if box_data.id!=None:
                 box.ID = int(box_data.id)
             box.bbox_class = results.names[int(box_data.cls)]
             box.probability = float(box_data.conf)
