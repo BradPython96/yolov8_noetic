@@ -3,9 +3,9 @@
 To call the service :
 
 Request :
-  - string model_name # the yolovo .pt model you want to use
-  - uint8[] classes # a list of int to select the classes you want yolov8 to detect (see the table bellow)
-  - sensor_msgs/Image image # the image treated by yolov8
+  - string model_name  # the yolovo .pt model you want to use
+  - uint8[] classes  # a list of int to select the classes you want yolov8 to detect (see the table bellow)
+  - sensor_msgs/Image image  # the image treated by yolov8
 
 
 _Int to String classes table :_
