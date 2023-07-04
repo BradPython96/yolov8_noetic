@@ -221,33 +221,49 @@ class Yolo_ros():
         header = req.image.header
         header.stamp = rospy.Time.now()
 
-        if req.image.height==0:
+        if req.image == '' or  req.image == [] or req.image == None or req.image.encoding == '' or req.image.height==0 or req.image.data==[]:
+            req.image = None
+
+        if req.image == None:
+            if self.last_image == None:
+                rospy.logwarn("[Yolo_ros] Unable to get the first image from kinect")
+                return False
+            
             image = self.last_image
+            
         else :
             image = req.image
         
         cv_image = self.cv_bridge.imgmsg_to_cv2(image)
 
-
+        # TODO need to check classes is a array
+        
         cls = []
         for cl in req.classes:
             cls.append(int(cl))
 
+
+
         if len(cls)>0:
             rospy.loginfo("classes :" + str(cls))
+        elif req.model_name=="yolov8m-pose.pt":
+            rospy.loginfo("classes : [0], yolov8m-pose only detects persons")
         else :
             rospy.loginfo("All classes")
             cls=[i for i in range(80)]
                 
         if req.model_name=="yolov8m-pose.pt":
+            rospy.loginfo("Model : yolov8m-pose.pt\n")
             results = self.yolo_pose.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")    
 
         else :
+            rospy.loginfo("Model : yolov8m-seg.pt\n")
             results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
         # else:
         #     results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
+        #TODO to remove ??
         results: Results = results[0].cpu()
 
         # tracking
@@ -256,10 +272,11 @@ class Yolo_ros():
         if len(det) > 0:
             if req.model_name=="yolov8m-pose.pt":
                 im0s = self.yolo_pose.predictor.batch[2]
-            elif req.model_name=="yolov8m-seg.pt":
+            else  :
+                #TODO Why yolo basic do not work ? TO fix
                 im0s = self.yolo_seg.predictor.batch[2]
-            else :
-                im0s = self.yolo_basic.predictor.batch[2]
+            # else :
+                # im0s = self.yolo_basic.predictor.batch[2]
             
             im0s = im0s if isinstance(im0s, list) else [im0s]
             tracks = self.tracker.update(det, im0s[0])
@@ -281,6 +298,24 @@ class Yolo_ros():
             box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
             boxes.boxes.append(box)
+
+            if box.bbox_class not in self._class_to_color:
+                r = random.randint(0, 255)
+                g = random.randint(0, 255)
+                box_data = random.randint(0, 255)
+                self._class_to_color[box.bbox_class] = (r, g, box_data)
+            color = self._class_to_color[box.bbox_class]
+
+            min_pt = (int(box.xmin),int(box.ymin))
+            max_pt =  (int(box.xmax),int(box.ymax))
+
+            cv2.rectangle(cv_image, min_pt, max_pt, color, 2)
+            label = "{} ({}) ({:.3f})".format(box.bbox_class, str(box.ID), box.probability)
+            pos = (min_pt[0] + 5, min_pt[1] + 25)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(cv_image, label, pos, font,
+                        1, color, 1, cv2.LINE_AA)
+            
         
         if results.keypoints != None:
             for box in boxes.boxes:
@@ -326,7 +361,14 @@ class Yolo_ros():
                     if is_in_box:
                         box.points_in_seg = points_list
                         break
+        #TODO add an option (rosparam) to create an image and publish to an ouput topic
+        # draw boxes for debug
+        
+
+
         # rospy.loginfo("Response sent : " + str(boxes))
+        self.cv2_pub.publish((self.cv_bridge.cv2_to_imgmsg(cv_image,
+                                                               encoding=image.encoding)))
         return Yolov8Response(boxes.boxes)
 
 
@@ -375,7 +417,9 @@ class Yolo_ros():
         # counter
         self.i = 1
 
-        self.last_image = Image()
+        self.last_image = None
+
+        self._class_to_color={}
 
         # topcis
         # _pub = rospy.Publisher("detections",Detection2DArray, queue_size=10)
@@ -389,8 +433,13 @@ class Yolo_ros():
         video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
         self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
 
+        # cv2 pub
+        self.cv2_pub = rospy.Publisher("yolov8_image_with_bboxes", Image, queue_size=10)
+
         #service 
         self.yolov8_srv = rospy.Service('yolov8_on_unique_frame', Yolov8, self.yolov8_on_unique_frame_cb)
+
+
         
         # # list of already existing models
         # existing_models = []
