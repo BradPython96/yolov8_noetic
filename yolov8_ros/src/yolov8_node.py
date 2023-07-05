@@ -51,14 +51,14 @@ class Yolo_ros():
             header = msg.header
             header.stamp = rospy.Time.now()
 
-            results = self.yolo_continuous_treatment.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+            results = self.yolo_pose.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
             results: Results = results[0].cpu()
 
             # tracking
             det = results.boxes.numpy()
 
             if len(det) > 0:
-                im0s = self.yolo_continuous_treatment.predictor.batch[2]
+                im0s = self.yolo_pose.predictor.batch[2]
                 im0s = im0s if isinstance(im0s, list) else [im0s]
                 tracks = self.tracker.update(det, im0s[0])
                 if len(tracks) > 0:
@@ -126,15 +126,15 @@ class Yolo_ros():
             results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
             results: Results = results[0].cpu()
 
-            # tracking
-            det = results.boxes.numpy()
+            # # tracking
+            # det = results.boxes.numpy()
 
-            if len(det) > 0:
-                im0s = self.yolo_seg.predictor.batch[2]
-                im0s = im0s if isinstance(im0s, list) else [im0s]
-                tracks = self.tracker.update(det, im0s[0])
-                if len(tracks) > 0:
-                    results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+            # if len(det) > 0:
+            #     im0s = self.yolo_seg.predictor.batch[2]
+            #     im0s = im0s if isinstance(im0s, list) else [im0s]
+            #     tracks = self.tracker.update(det, im0s[0])
+            #     if len(tracks) > 0:
+            #         results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
             if len(results.boxes)>0:
                 boxes = Boxes()
@@ -191,15 +191,15 @@ class Yolo_ros():
             results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
             results: Results = results[0].cpu()
 
-            # tracking
-            det = results.boxes.numpy()
+            # # tracking
+            # det = results.boxes.numpy()
 
-            if len(det) > 0:
-                im0s = self.yolo_basic.predictor.batch[2]
-                im0s = im0s if isinstance(im0s, list) else [im0s]
-                tracks = self.tracker.update(det, im0s[0])
-                if len(tracks) > 0:
-                    results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+            # if len(det) > 0:
+            #     im0s = self.yolo_basic.predictor.batch[2]
+            #     im0s = im0s if isinstance(im0s, list) else [im0s]
+            #     tracks = self.tracker.update(det, im0s[0])
+            #     if len(tracks) > 0:
+            #         results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
             if len(results.boxes)>0:
                 boxes = Boxes()
@@ -259,7 +259,7 @@ class Yolo_ros():
 
 
         if len(cls)>0:
-            rospy.loginfo("classes :" + str(cls))
+            rospy.loginfo("classes : " + str(cls))
         elif req.model_name=="yolov8m-pose.pt":
             rospy.loginfo("classes : [0], yolov8m-pose only detects persons")
         else :
@@ -270,31 +270,33 @@ class Yolo_ros():
             rospy.loginfo("Model : yolov8m-pose.pt\n")
             results = self.yolo_pose.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")    
 
-        else :
+        elif  req.model_name=="yolov8m-seg.pt":
             rospy.loginfo("Model : yolov8m-seg.pt\n")
             results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
-        # else:
-        #     results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
+        else:
+            rospy.loginfo("Model : yolov8m.pt\n")
+            results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
+        
         results: Results = results[0].cpu()
+        
+        # # tracking
+        # det = results.boxes.numpy()
 
-        # tracking
-        det = results.boxes.numpy()
-
-        if len(det) > 0:
-            if req.model_name=="yolov8m-pose.pt":
-                im0s = self.yolo_pose.predictor.batch[2]
-            else  :
-                #TODO Why yolo basic do not work ? TO fix
-                im0s = self.yolo_seg.predictor.batch[2]
-            # else :
-                # im0s = self.yolo_basic.predictor.batch[2]
+        # if len(det) > 0:
+        #     if req.model_name=="yolov8m-pose.pt":
+        #         im0s = self.yolo_pose.predictor.batch[2]
+        #     else  :
+        #         #TODO Why yolo basic do not work ? TO fix
+        #         im0s = self.yolo_basic.predictor.batch[2]
+        #     # else :
+        #         # im0s = self.yolo_basic.predictor.batch[2]
             
-            im0s = im0s if isinstance(im0s, list) else [im0s]
-            tracks = self.tracker.update(det, im0s[0])
-            if len(tracks) > 0:
-                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+        #     im0s = im0s if isinstance(im0s, list) else [im0s]
+        #     tracks = self.tracker.update(det, im0s[0])
+        #     if len(tracks) > 0:
+        #         results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
         boxes = Boxes()
 
@@ -422,12 +424,12 @@ class Yolo_ros():
         rospy.loginfo("Third model created")
 
 
-        if model_continuous_treatment=="yolov8m-pose.pt":
-            self.yolo_continuous_treatment = self.yolo_pose
-        elif model_continuous_treatment=="yolov8m-seg.pt":
-            self.yolo_continuous_treatment = self.yolo_seg
-        elif model_continuous_treatment=="yolov8m.pt":
-            self.yolo_continuous_treatment = self.yolo_basic
+        # if model_continuous_treatment=="yolov8m-pose.pt":
+        #     self.yolo_continuous_treatment = self.yolo_pose
+        # elif model_continuous_treatment=="yolov8m-seg.pt":
+        #     self.yolo_continuous_treatment = self.yolo_seg
+        # elif model_continuous_treatment=="yolov8m.pt":
+        #     self.yolo_continuous_treatment = self.yolo_basic
 
         self.cv_bridge=CvBridge()
 
@@ -444,11 +446,11 @@ class Yolo_ros():
         video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
         self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
         
-        # video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
-        # self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
+        video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
+        self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
         
-        # video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
-        # self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
+        video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
+        self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
 
         # cv2 pub
         self.cv2_pub = rospy.Publisher("yolov8_image_with_bboxes", Image, queue_size=10)
