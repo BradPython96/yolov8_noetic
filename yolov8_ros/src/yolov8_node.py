@@ -44,176 +44,182 @@ class Yolo_ros():
 
     def image_cb(self,msg):
 
-        self.last_image = msg
+        try :
+            self.last_image = msg
 
-        cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
-        header = msg.header
-        header.stamp = rospy.Time.now()
+            cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
+            header = msg.header
+            header.stamp = rospy.Time.now()
 
-        results = self.yolo_continuous_treatment.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
-        results: Results = results[0].cpu()
+            results = self.yolo_continuous_treatment.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+            results: Results = results[0].cpu()
 
-        # tracking
-        det = results.boxes.numpy()
+            # tracking
+            det = results.boxes.numpy()
 
-        if len(det) > 0:
-            im0s = self.yolo_continuous_treatment.predictor.batch[2]
-            im0s = im0s if isinstance(im0s, list) else [im0s]
-            tracks = self.tracker.update(det, im0s[0])
-            if len(tracks) > 0:
-                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
-        
-        if len(results.boxes)>0:
-            boxes = Boxes()
-            for box_data in results.boxes:
+            if len(det) > 0:
+                im0s = self.yolo_continuous_treatment.predictor.batch[2]
+                im0s = im0s if isinstance(im0s, list) else [im0s]
+                tracks = self.tracker.update(det, im0s[0])
+                if len(tracks) > 0:
+                    results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-                box = Box()
-                if box_data.id!=None:
-                    box.ID = int(box_data.id)
-                box.bbox_class = results.names[int(box_data.cls)]
-                box.probability = float(box_data.conf)
-                box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
-                box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
-                box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
-                box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+            if len(results.boxes)>0:
+                boxes = Boxes()
+                for box_data in results.boxes:
 
-                boxes.boxes.append(box)
+                    box = Box()
+                    if box_data.id!=None and int(box_data.id)<=65535:
+                        box.ID = int(box_data.id)
+                    box.bbox_class = results.names[int(box_data.cls)]
+                    box.probability = float(box_data.conf)
+                    box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                    box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                    box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                    box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
-            if results.keypoints != None:
+                    boxes.boxes.append(box)
 
-                for box in boxes.boxes:
-                    x_min = box.xmin
-                    y_min = box.ymin
-                    x_max = box.xmax
-                    y_max = box.ymax
+                if results.keypoints != None:
 
-                    for p in results.keypoints.data :
-                        is_in_box = True
-                        skeleton = []
-                        for i in p:
-                            skeleton_point = SkeletonPoint()
-                            skeleton_point.x = i[0]
-                            skeleton_point.y = i[1]
-                            skeleton_point.conf = i[2]
-                            skeleton.append(skeleton_point)
-                            if (skeleton_point.conf > 0.5 and (skeleton_point.x< x_min or skeleton_point.x > x_max or skeleton_point.y< y_min or skeleton_point.y > y_max)):
-                                is_in_box = False
+                    for box in boxes.boxes:
+                        x_min = box.xmin
+                        y_min = box.ymin
+                        x_max = box.xmax
+                        y_max = box.ymax
+
+                        for p in results.keypoints.data :
+                            is_in_box = True
+                            skeleton = []
+                            for i in p:
+                                skeleton_point = SkeletonPoint()
+                                skeleton_point.x = i[0]
+                                skeleton_point.y = i[1]
+                                skeleton_point.conf = i[2]
+                                skeleton.append(skeleton_point)
+                                if (skeleton_point.conf > 0.5 and (skeleton_point.x< x_min or skeleton_point.x > x_max or skeleton_point.y< y_min or skeleton_point.y > y_max)):
+                                    is_in_box = False
+                                    break
+                            if is_in_box:
+                                box.skeleton=skeleton
                                 break
-                        if is_in_box:
-                            box.skeleton=skeleton
-                            break
 
-            # rospy.loginfo("Publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))                            
-            self.result_pub.publish(boxes)
+                # rospy.loginfo("Publishing boxes. Number of boxes detected : " + str(len(boxes.boxes)))                            
+                self.result_pub.publish(boxes)
 
 
-        # if self.i == 1:
-        #     rospy.loginfo(results.names)
-        #     self.first_image_time = rospy.Time.now()
-        # else:
-        #     delta_t = (rospy.Time.now().to_nsec()) - (self.first_image_time.to_nsec())
-        #     rospy.loginfo("Image treated per sec : " + str((self.i/delta_t)*1000000000))
-        # self.i += 1
+            # if self.i == 1:
+            #     rospy.loginfo(results.names)
+            #     self.first_image_time = rospy.Time.now()
+            # else:
+            #     delta_t = (rospy.Time.now().to_nsec()) - (self.first_image_time.to_nsec())
+            #     rospy.loginfo("Image treated per sec : " + str((self.i/delta_t)*1000000000))
+            # self.i += 1
+        except:
+            rospy.logerr("Wrong images sent by the Kinect")
 
     def image_cb_1(self,msg):
 
-        cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
+        try :
+            cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
 
-        results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
-        results: Results = results[0].cpu()
+            results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+            results: Results = results[0].cpu()
 
-        # tracking
-        det = results.boxes.numpy()
+            # tracking
+            det = results.boxes.numpy()
 
-        if len(det) > 0:
-            im0s = self.yolo_seg.predictor.batch[2]
-            im0s = im0s if isinstance(im0s, list) else [im0s]
-            tracks = self.tracker.update(det, im0s[0])
-            if len(tracks) > 0:
-                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+            if len(det) > 0:
+                im0s = self.yolo_seg.predictor.batch[2]
+                im0s = im0s if isinstance(im0s, list) else [im0s]
+                tracks = self.tracker.update(det, im0s[0])
+                if len(tracks) > 0:
+                    results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-        if len(results.boxes)>0:
-            boxes = Boxes()
-            for box_data in results.boxes:
+            if len(results.boxes)>0:
+                boxes = Boxes()
+                for box_data in results.boxes:
 
-                box = Box()
-                if box_data.id!=None:
-                    box.ID = int(box_data.id)
-                box.bbox_class = results.names[int(box_data.cls)]
-                box.probability = float(box_data.conf)
-                box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
-                box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
-                box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
-                box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                    box = Box()
+                    if box_data.id!=None and int(box_data.id)<=65535:
+                        box.ID = int(box_data.id)
+                    box.bbox_class = results.names[int(box_data.cls)]
+                    box.probability = float(box_data.conf)
+                    box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                    box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                    box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                    box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
-                boxes.boxes.append(box)
+                    boxes.boxes.append(box)
 
-            if results.masks != None:
+                if results.masks != None:
 
-                for box in boxes.boxes:
-                    x_min = box.xmin
-                    y_min = box.ymin
-                    x_max = box.xmax
-                    y_max = box.ymax
-                    for p in results.masks.xy :
-                        is_in_box = True
-                        points_list = []
-                        for i in p:
-                            seg = Point()
-                            seg.x = i[0]
-                            seg.y = i[1]
-                            points_list.append(seg)
-                            if (seg.x< x_min or seg.x > x_max or seg.y< y_min or seg.y > y_max):
-                                is_in_box = False
+                    for box in boxes.boxes:
+                        x_min = box.xmin
+                        y_min = box.ymin
+                        x_max = box.xmax
+                        y_max = box.ymax
+                        for p in results.masks.xy :
+                            is_in_box = True
+                            points_list = []
+                            for i in p:
+                                seg = Point()
+                                seg.x = i[0]
+                                seg.y = i[1]
+                                points_list.append(seg)
+                                if (seg.x< x_min or seg.x > x_max or seg.y< y_min or seg.y > y_max):
+                                    is_in_box = False
+                                    break
+                            if is_in_box:
+                                box.points_in_seg = points_list
                                 break
-                        if is_in_box:
-                            box.points_in_seg = points_list
-                            break
 
 
-            
-            # rospy.loginfo(results.masks.xy)
-            # rospy.loginfo("nb de boxes : "+ str(len(results.boxes)))
-            # rospy.loginfo("taille totale : " + str(len(results.masks.data)) + "\n taille [] : " + str(len(results.masks.data[0])) + "\n taille [][] : " + str(len(results.masks.data[0][0])))
-            self.result_pub_1.publish(boxes)
-
-
-
+                            
+                # rospy.loginfo(results.masks.xy)
+                # rospy.loginfo("nb de boxes : "+ str(len(results.boxes)))
+                # rospy.loginfo("taille totale : " + str(len(results.masks.data)) + "\n taille [] : " + str(len(results.masks.data[0])) + "\n taille [][] : " + str(len(results.masks.data[0][0])))
+                self.result_pub_1.publish(boxes)
+        except:
+            rospy.logerr("Wrong images sent by the Kinect")
+    
     def image_cb_2(self,msg):
 
-        cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
+        try :
+            cv_image = self.cv_bridge.imgmsg_to_cv2(msg)
 
-        results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
-        results: Results = results[0].cpu()
+            results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")
+            results: Results = results[0].cpu()
 
-        # tracking
-        det = results.boxes.numpy()
+            # tracking
+            det = results.boxes.numpy()
 
-        if len(det) > 0:
-            im0s = self.yolo_basic.predictor.batch[2]
-            im0s = im0s if isinstance(im0s, list) else [im0s]
-            tracks = self.tracker.update(det, im0s[0])
-            if len(tracks) > 0:
-                results.update(boxes=torch.as_tensor(tracks[:, :-1]))
+            if len(det) > 0:
+                im0s = self.yolo_basic.predictor.batch[2]
+                im0s = im0s if isinstance(im0s, list) else [im0s]
+                tracks = self.tracker.update(det, im0s[0])
+                if len(tracks) > 0:
+                    results.update(boxes=torch.as_tensor(tracks[:, :-1]))
 
-        if len(results.boxes)>0:
-            boxes = Boxes()
-            for box_data in results.boxes:
+            if len(results.boxes)>0:
+                boxes = Boxes()
+                for box_data in results.boxes:
 
-                box = Box()
-                if box_data.id!=None:
-                    box.ID = int(box_data.id)
-                box.bbox_class = results.names[int(box_data.cls)]
-                box.probability = float(box_data.conf)
-                box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
-                box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
-                box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
-                box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                    box = Box()
+                    if box_data.id!=None and int(box_data.id)<=65535:
+                        box.ID = int(box_data.id)
+                    box.bbox_class = results.names[int(box_data.cls)]
+                    box.probability = float(box_data.conf)
+                    box.xmin = float(min(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                    box.ymin = float(min(box_data.xyxy[0][1], box_data.xyxy[0][3]))
+                    box.xmax = float(max(box_data.xyxy[0][0], box_data.xyxy[0][2]))
+                    box.ymax = float(max(box_data.xyxy[0][1], box_data.xyxy[0][3]))
 
-                boxes.boxes.append(box)
-            
-            self.result_pub_2.publish(boxes)
+                    boxes.boxes.append(box)
 
+                self.result_pub_2.publish(boxes)
+        except:
+            rospy.logerr("Wrong images sent by the Kinect")
             
     def yolov8_on_unique_frame_cb(self, req):
 
@@ -227,7 +233,8 @@ class Yolo_ros():
         if req.image == None:
             if self.last_image == None:
                 rospy.logwarn("[Yolo_ros] Unable to get the first image from kinect")
-                return False
+                error_boxes = Boxes()
+                return (error_boxes.boxes)
             
             image = self.last_image
             
@@ -235,13 +242,20 @@ class Yolo_ros():
             image = req.image
         
         cv_image = self.cv_bridge.imgmsg_to_cv2(image)
-
-        # TODO need to check classes is a array
         
-        cls = []
-        for cl in req.classes:
-            cls.append(int(cl))
+        # TODO need to check classes is a array
 
+        # if type(req.classes)!=''
+        cls = []
+        
+        for cl in req.classes:
+            if cl >=0 and cl <= 79:
+                try :
+                    cls.append(int(cl))
+                except:
+                    rospy.logwarn("One of the classes asked is not an int")
+            else :
+                rospy.logwarn("One of the classes asked is not in [0;79]. Ignoring it.")
 
 
         if len(cls)>0:
@@ -263,7 +277,6 @@ class Yolo_ros():
         # else:
         #     results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
-        #TODO to remove ??
         results: Results = results[0].cpu()
 
         # tracking
@@ -288,7 +301,7 @@ class Yolo_ros():
         for box_data in results.boxes:
 
             box = Box()
-            if box_data.id!=None:
+            if box_data.id!=None and int(box_data.id)<=65535:
                 box.ID = int(box_data.id)
             box.bbox_class = results.names[int(box_data.cls)]
             box.probability = float(box_data.conf)
@@ -299,22 +312,23 @@ class Yolo_ros():
 
             boxes.boxes.append(box)
 
-            if box.bbox_class not in self._class_to_color:
-                r = random.randint(0, 255)
-                g = random.randint(0, 255)
-                box_data = random.randint(0, 255)
-                self._class_to_color[box.bbox_class] = (r, g, box_data)
-            color = self._class_to_color[box.bbox_class]
+            if self.show_flag:
+                if box.bbox_class not in self._class_to_color:
+                    r = random.randint(0, 255)
+                    g = random.randint(0, 255)
+                    box_data = random.randint(0, 255)
+                    self._class_to_color[box.bbox_class] = (r, g, box_data)
+                color = self._class_to_color[box.bbox_class]
 
-            min_pt = (int(box.xmin),int(box.ymin))
-            max_pt =  (int(box.xmax),int(box.ymax))
+                min_pt = (int(box.xmin),int(box.ymin))
+                max_pt =  (int(box.xmax),int(box.ymax))
 
-            cv2.rectangle(cv_image, min_pt, max_pt, color, 2)
-            label = "{} ({}) ({:.3f})".format(box.bbox_class, str(box.ID), box.probability)
-            pos = (min_pt[0] + 5, min_pt[1] + 25)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(cv_image, label, pos, font,
-                        1, color, 1, cv2.LINE_AA)
+                cv2.rectangle(cv_image, min_pt, max_pt, color, 2)
+                label = "{} ({}) ({:.3f})".format(box.bbox_class, str(box.ID), box.probability)
+                pos = (min_pt[0] + 5, min_pt[1] + 25)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(cv_image, label, pos, font,
+                            1, color, 1, cv2.LINE_AA)
             
         
         if results.keypoints != None:
@@ -361,13 +375,13 @@ class Yolo_ros():
                     if is_in_box:
                         box.points_in_seg = points_list
                         break
-        #TODO add an option (rosparam) to create an image and publish to an ouput topic
-        # draw boxes for debug
+
         
 
 
         # rospy.loginfo("Response sent : " + str(boxes))
-        self.cv2_pub.publish((self.cv_bridge.cv2_to_imgmsg(cv_image,
+        if self.show_flag:
+            self.cv2_pub.publish((self.cv_bridge.cv2_to_imgmsg(cv_image,
                                                                encoding=image.encoding)))
         return Yolov8Response(boxes.boxes)
 
@@ -388,6 +402,9 @@ class Yolo_ros():
         
         rospy.set_param("threshold", 0.5)
         self.threshold = rospy.get_param("threshold")
+
+        rospy.set_param("show", True) # If true, send the results as a sensor_msgs/Image on topic "/yolov8_image_with_bboxes"
+        self.show_flag = rospy.get_param("show")
     
         self.cv_bridge = CvBridge()
         rospy.loginfo("Creatings tracker\n")
@@ -427,11 +444,11 @@ class Yolo_ros():
         video_sub = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
         self.result_pub = rospy.Publisher("yolov8_result", Boxes, queue_size=10)
         
-        video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
-        self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
+        # video_sub_1 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
+        # self.result_pub_1 = rospy.Publisher("yolov8_result_1", Boxes, queue_size=10)
         
-        video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
-        self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
+        # video_sub_2 = rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
+        # self.result_pub_2 = rospy.Publisher("yolov8_result_2", Boxes, queue_size=10)
 
         # cv2 pub
         self.cv2_pub = rospy.Publisher("yolov8_image_with_bboxes", Image, queue_size=10)
