@@ -21,10 +21,13 @@
 
   **Response :**
 
-  - Boxes boxes # list of object Box
+  The service returns an object of type "Boxes" :
+  
+  - Boxes :
     - header
-    
-    - Box :
+    - Box[] boxes
+   
+  With Box type :
       - uint16 ID # box ID
       - string bbox_class # name of the box class
       - float64 probability
@@ -35,16 +38,16 @@
       - SkeletonPoint[] skeleton # list of points in the skeleton created by yolov8 for this box
         - float64 x
         - float64 y
-        - float64 conf # confidence created by yolov8 for this point
-      - geometry_msgs/Point[] points_in_seg # segmentation pixel list (pixel.z is always 0) created by yolov8 for this box
+        - float64 conf # confidence calculated by yolov8 for this point
+      - geometry_msgs/Point[] points_in_seg # segmentation pixel list (pixel.z is always =0) created by yolov8 for this box
 
 ## **Get results via topics :**
 
   _Topics to listen to :_
   
-    - yolov8_result # correspond to model yolov8m-pose.pt
-    - yolov8_result_1 # correspond to model yolov8m-seg.pt
-    - yolov8_result_2 # correspond to model yolov8m.pt
+    - yolov8_result_pose # correspond to model yolov8m-pose.pt, each box has an ID.
+    - yolov8_result_seg # correspond to model yolov8m-seg.pt
+    - yolov8_result_basic # correspond to model yolov8m.pt
 
   
 
