@@ -360,7 +360,7 @@ class Yolo_ros():
                 min_pt = (int(box.xmin),int(box.ymin))
                 max_pt =  (int(box.xmax),int(box.ymax))
 
-                cv2.rectangle(cv_image, min_pt, max_pt, color, 2)
+                cv2.rectangle(cv_image, min_pt, max_pt, color, 5)
                 label = "{} ({}) ({:.3f})".format(box.bbox_class, str(box.ID), box.probability)
                 pos = (min_pt[0] + 5, min_pt[1] + 25)
                 font = cv2.FONT_HERSHEY_SIMPLEX
