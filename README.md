@@ -21,7 +21,8 @@
 
   **Response :**
 
-  - Box[] boxes # list of object Box
+  - Boxes boxes # list of object Box
+    - header
     
     - Box :
       - uint16 ID # box ID
