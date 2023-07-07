@@ -28,6 +28,7 @@
     - Box[] boxes
    
   With Box type :
+  
       - uint16 ID # box ID
       - string bbox_class # name of the box class
       - float64 probability
