@@ -1,9 +1,0 @@
-uint16 ID
-string bbox_class
-float64 probability
-float64 xmin
-float64 ymin
-float64 xmax
-float64 ymax
-SkeletonPoint[] skeleton
-geometry_msgs/Point[] points_in_seg
