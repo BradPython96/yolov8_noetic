@@ -284,23 +284,23 @@ class Yolo_ros():
 
 
         if len(cls)>0:
-            rospy.loginfo("classes : " + str(cls))
+            rospy.loginfo("[Yolo_ros] classes : " + str(cls))
         elif req.model_name=="yolov8m-pose.pt":
-            rospy.loginfo("classes : [0], yolov8m-pose only detects persons")
+            rospy.loginfo("[Yolo_ros] classes : [0], yolov8m-pose only detects persons")
         else :
-            rospy.loginfo("All classes")
+            rospy.loginfo("[Yolo_ros] All classes")
             cls=[i for i in range(80)]
                 
         if req.model_name=="yolov8m-pose.pt":
-            rospy.loginfo("Model : yolov8m-pose.pt\n")
+            rospy.loginfo("[Yolo_ros] Model : yolov8m-pose.pt")
             results = self.yolo_pose.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track")    
 
         elif  req.model_name=="yolov8m-seg.pt":
-            rospy.loginfo("Model : yolov8m-seg.pt\n")
+            rospy.loginfo("[Yolo_ros] Model : yolov8m-seg.pt")
             results = self.yolo_seg.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
         else:
-            rospy.loginfo("Model : yolov8m.pt\n")
+            rospy.loginfo("[Yolo_ros] Model : yolov8m.pt")
             results = self.yolo_basic.predict(source=cv_image,verbose=False,stream=False,conf=self.threshold,mode="track", classes=cls)
 
         
@@ -421,15 +421,15 @@ class Yolo_ros():
 
 
         if len(boxes.boxes)>0:
-            str_to_print = "Yolov8 detected"
+            str_to_print = "[Yolo_ros] Yolov8 detected"
             for obj in self.nb_of_object:
                 str_to_print += (" " + str(self.nb_of_object[obj]) + " " + obj + "(s) "  + "and")
 
             str_to_print = str_to_print.rstrip(" and")
             str_to_print+="."
-            rospy.loginfo(str_to_print)
+            rospy.loginfo(str_to_print + "\n")
         else:
-            rospy.loginfo("Yolov8 didn't detect anything.")
+            rospy.loginfo("[Yolo_ros] Yolov8 didn't detect anything.\n")
 
         return Yolov8Response(boxes)
 
@@ -523,8 +523,3 @@ class Yolo_ros():
 if __name__ == '__main__':
     
     node = Yolo_ros()
-    
-    
-
-
-
