@@ -24,8 +24,8 @@
 
   The service returns an object of type "Boxes" :
   
-  - Boxes :
-    
+  Boxes :
+  
     - header
     - Box[] boxes
    
