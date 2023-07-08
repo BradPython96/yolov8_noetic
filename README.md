@@ -51,6 +51,3 @@
     - yolov8_result_pose # correspond to model yolov8m-pose.pt, each box has an ID.
     - yolov8_result_seg # correspond to model yolov8m-seg.pt
     - yolov8_result_basic # correspond to model yolov8m.pt
-
-  
-
