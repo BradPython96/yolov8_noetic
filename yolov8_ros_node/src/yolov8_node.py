@@ -445,6 +445,9 @@ class Yolo_ros():
     
         rospy.set_param("device", "cuda:0")
         self.device = rospy.get_param("device")
+
+        rospy.set_param("camera_topic", "/kinect/hd/image_color")
+        self.camera_topic = rospy.get_param("camera_topic")
         
         rospy.set_param("threshold", 0.5)
         self.threshold = rospy.get_param("threshold")
@@ -454,6 +457,8 @@ class Yolo_ros():
 
         rospy.set_param("print_service_results", True)
         self.print_service_result = rospy.get_param("print_service_results")
+
+        
     
     
         rospy.loginfo("[Yolo_ros] Creating tracker.\n")
@@ -480,15 +485,15 @@ class Yolo_ros():
         self.yolo_basic = YOLO("yolov8m.pt")
 
         # Subscriber to apply yolov8-pose on a sensor_msgs/Image image. Publishs the results on "yolov8_result_pose" topic
-        rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb, queue_size=1)
+        rospy.Subscriber(self.camera_topic, Image, self.image_cb, queue_size=1)
         self.result_pub = rospy.Publisher("yolov8_result_pose", Boxes, queue_size=1)
 
         # Subscriber to apply yolov8-seg on a sensor_msgs/Image image. Publishs the results on "yolov8_result_seg" topic
-        rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_1, queue_size=1)
+        rospy.Subscriber(self.camera_topic, Image, self.image_cb_1, queue_size=1)
         self.result_pub_1 = rospy.Publisher("yolov8_result_seg", Boxes, queue_size=1)
 
         # Subscriber to apply yolov8 on a sensor_msgs/Image image. Publishs the results on "yolov8_result_basic" topic
-        rospy.Subscriber("/kinect2/hd/image_color", Image, self.image_cb_2, queue_size=1)
+        rospy.Subscriber(self.camera_topic, Image, self.image_cb_2, queue_size=1)
         self.result_pub_2 = rospy.Publisher("yolov8_result_basic", Boxes, queue_size=1)
 
         # Service to call to apply a yolov8 on a sensor_msgs/Image image with a specific model. 
