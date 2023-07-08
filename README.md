@@ -3,6 +3,7 @@
 ## **To call the service :**
 
   **Request** **:**
+  
     - string model_name  # the yolovo .pt model you want to use (list of model names below)
     - uint8[] classes  # a list of int to select the classes you want yolov8 to detect (int to string table bellow)
     - sensor_msgs/Image image  # the image treated by yolov8
